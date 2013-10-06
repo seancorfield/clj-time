@@ -83,7 +83,7 @@
    ceorce date-times to or from other types, see clj-time.coerce."
   (:refer-clojure :exclude [extend second])
   (:import (org.joda.time ReadablePartial ReadableDateTime ReadableInstant ReadablePeriod DateTime
-                          DateMidnight YearMonth LocalDate DateTimeZone Period PeriodType Interval
+                          DateMidnight YearMonth LocalDate LocalTime DateTimeZone Period PeriodType Interval
                           Years Months Weeks Days Hours Minutes Seconds LocalDateTime MutableDateTime
                           DateTimeUtils)
            (org.joda.time.base BaseDateTime)))
@@ -177,6 +177,16 @@
   (after? [this #^ReadablePartial that] (.isAfter this that))
   (before? [this #^ReadablePartial that] (.isBefore this that))
   (plus- [this #^ReadablePeriod period] (.plus this period))
+  (minus- [this #^ReadablePeriod period] (.minus this period))
+
+  org.joda.time.LocalTime
+  (hour [this] (.getHourOfDay this))
+  (minute [this] (.getMinuteOfHour this))
+  (second [this] (.getSecondOfMinute this))
+  (milli [this] (.getMillisOfSecond this))
+  (after? [this #^ReadablePartial that] (.isAfter this that))
+  (before? [this #^ReadablePartial that] (.isBefore this that))
+  (plus- [this #^ReadablePeriod period] (.plus this period))
   (minus- [this #^ReadablePeriod period] (.minus this period)))
 
 (def ^{:doc "DateTimeZone for UTC."}
@@ -235,7 +245,7 @@
 
 (defn #^org.joda.time.LocalDateTime local-date-time
   "Constructs and returns a new LocalDateTime.
-   Specify the year, month of year, day of month, hour of day, minute if hour,
+   Specify the year, month of year, day of month, hour of day, minute of hour,
    second of minute, and millisecond of second. Note that month and day are
    1-indexed while hour, second, minute, and millis are 0-indexed.
    Any number of least-significant components can be ommited, in which case
@@ -276,6 +286,16 @@
    LocalDate objects do not deal with timezones at all."
   []
   (LocalDate.))
+
+(defn #^org.joda.time.LocalTime local-time
+  "Constructs and returns a new LocalTime.
+   Specify the hour, minute, and optionally second and millisecond."
+  ([#^Integer hour #^Integer minute]
+   (LocalTime. hour minute))
+  ([#^Integer hour #^Integer minute #^Integer second]
+   (LocalTime. hour minute second))
+  ([#^Integer hour #^Integer minute #^Integer second #^Integer milli]
+   (LocalTime. hour minute second milli)))
 
 (defn time-zone-for-offset
   "Returns a DateTimeZone for the given offset, specified either in hours or
