@@ -93,6 +93,20 @@
   (is (= (local-date 2013 4 20) (do-at (from-time-zone (date-time 2013 4 20) (default-time-zone))
                                   (today)))))
 
+(deftest test-local-time-and-accessors
+  (let [t (local-time 11 22)]
+    (is (= 11 (hour   t)))
+    (is (= 22 (minute t))))
+  (let [t (local-time 11 22 33)]
+    (is (= 11 (hour   t)))
+    (is (= 22 (minute t)))
+    (is (= 33 (second t))))
+  (let [t (local-time 11 22 33 44)]
+    (is (= 11 (hour   t)))
+    (is (= 22 (minute t)))
+    (is (= 33 (second t)))
+    (is (= 44 (milli  t)))))
+
 (deftest test-day-of-week
   (let [d (date-time 2010 4 24)]
     (is (= 6 (day-of-week d))))
