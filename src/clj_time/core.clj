@@ -690,13 +690,12 @@
     (fn [] ~@body)))
 
 (defn ^DateTime floor
-  "Floors the given date-time to the given time unit,
-  e.g. (floor (now) hour) returns (now) for all units up to and including the hour"
-  ([^DateTime dt dt-fn] (floor dt dt-fn [year month day hour minute second millis]))
-  ([^DateTime dt dt-fn dt-fns]
-    (apply date-time
-      (map apply
-        (concat (take-while (complement (partial = dt-fn)) dt-fns) [dt-fn])
-        (repeat [dt])))
-  )
-)
+  "Floors the given date-time dt to the given time unit dt-fn,
+  e.g. (floor (now) hour) returns (now) for all units
+  up to and including the hour"
+  ([^DateTime dt dt-fn]
+	 (let [dt-fns [year month day hour minute second milli]]
+	 	(apply date-time
+	 		(map apply
+				(concat (take-while (partial not= dt-fn) dt-fns) [dt-fn])
+				(repeat [dt]))))))
