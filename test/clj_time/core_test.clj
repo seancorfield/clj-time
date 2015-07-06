@@ -476,3 +476,13 @@
         d1 (date-time y m d 13 0)]
     (is (= d1 (today-at 13 0)))
     (is (= d1 (today-at 13 0 0)))))
+
+(deftest test-floor
+	(let [^DateTime t (date-time 0 1 2 3 4 5 6)]
+		(is (= (floor t year)   (date-time 0)))
+		(is (= (floor t month)  (date-time 0 1)))
+		(is (= (floor t day)    (date-time 0 1 2)))
+		(is (= (floor t hour)   (date-time 0 1 2 3)))
+		(is (= (floor t minute) (date-time 0 1 2 3 4)))
+		(is (= (floor t second) (date-time 0 1 2 3 4 5)))
+		(is (= (floor t milli)  (date-time 0 1 2 3 4 5 6)))))
