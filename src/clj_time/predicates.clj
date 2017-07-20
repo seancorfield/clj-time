@@ -78,12 +78,19 @@
 
 ;;First and last day of month checks
 (defn last-day-of-month? [date-time]
-  (= (time/last-day-of-the-month date-time) date-time))
+  (time/equal? (time/last-day-of-the-month date-time) date-time))
+
+(def last-day-of-the-month? last-day-of-month?)
 
 (defn first-day-of-month? [date-time]
-  (= (time/first-day-of-the-month date-time) date-time))
+  (time/equal? (time/first-day-of-the-month date-time) date-time))
+
+(def first-day-of-the-month? first-day-of-month?)
+
+(defn nth-day-of-the-month? [date-time n]
+  (time/equal? (time/nth-day-of-the-month date-time n) date-time))
 
 (defn same-date?
   "Compares two date times to see if they are the same date"
   [this-date-time that-date-time]
-  (= (coerce/to-local-date this-date-time) (coerce/to-local-date that-date-time)))
+  (time/equal? (coerce/to-local-date this-date-time) (coerce/to-local-date that-date-time)))

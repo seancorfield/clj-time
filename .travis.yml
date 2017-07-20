@@ -1,8 +1,12 @@
 language: clojure
-lein: lein2
-before_script: rm -f test/readme.clj
-script: lein2 test-all
+cache:
+  directories:
+  - $HOME/.m2
+before_script:
+  - rm -f test/readme.clj
+  - echo y | sudo lein upgrade
+script: lein test-all
 jdk:
-  - openjdk6
   - openjdk7
   - oraclejdk7
+  - oraclejdk8

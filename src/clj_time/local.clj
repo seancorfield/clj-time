@@ -27,8 +27,8 @@
   (:require [clj-time.core :as time]
             [clj-time.coerce :as coerce]
             [clj-time.format :as fmt])
-  (:import (org.joda.time DateTime DateTimeZone)
-           (org.joda.time.format DateTimeFormatter)))
+  (:import [org.joda.time DateTime DateTimeZone]
+           [org.joda.time.format DateTimeFormatter]))
 
 (def ^{:doc "Map of local formatters for parsing and printing." :dynamic true}
   *local-formatters*

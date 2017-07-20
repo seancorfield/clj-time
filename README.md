@@ -1,7 +1,7 @@
-# `clj-time` <a href="http://travis-ci.org/#!/seancorfield/clj-time/builds"><img src="https://secure.travis-ci.org/seancorfield/clj-time.png" /></a> [![Dependency Status](https://www.versioneye.com/clojure/clj-time:clj-time/0.8.0/badge.png)](https://www.versioneye.com/clojure/clj-time:clj-time/0.8.0)
+# `clj-time` <a href="http://travis-ci.org/#!/clj-time/clj-time/builds"><img src="https://secure.travis-ci.org/clj-time/clj-time.png" /></a> [![Dependency Status](https://www.versioneye.com/clojure/clj-time:clj-time/badge.png)](https://www.versioneye.com/clojure/clj-time:clj-time) [![Join the chat at https://gitter.im/clj-time/clj-time](https://badges.gitter.im/clj-time/clj-time.svg)](https://gitter.im/clj-time/clj-time?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 
-A date and time library for Clojure, wrapping the [Joda Time](http://joda-time.sourceforge.net/) library.
+A date and time library for Clojure, wrapping the [Joda Time](http://www.joda.org/joda-time/) library.
 
 ## Artifacts
 
@@ -21,7 +21,7 @@ If you are using Maven, add the following repository definition to your `pom.xml
 With Leiningen:
 
 ``` clj
-[clj-time "0.8.0"]
+[clj-time "0.14.0"]
 ```
 
 With Maven:
@@ -30,7 +30,7 @@ With Maven:
 <dependency>
   <groupId>clj-time</groupId>
   <artifactId>clj-time</artifactId>
-  <version>0.8.0</version>
+  <version>0.14.0</version>
 </dependency>
 ```
 
@@ -42,15 +42,6 @@ Please open issues against the [official clj-time repo on Github](https://github
 
 Please ask questions on the [clj-time mailing list](http://groups.google.com/forum/#!forum/clj-time).
 
-## Recent API Changes
-
-**Note: version 0.6.0 introduces a number of API changes to improve consistency.**
-The API now uses `second`, `seconds` and `millis` where it previously
-had `sec`, `secs` and `msecs`. The older API is still present but
-marked as deprecated (and calling deprecated functions will print a
-message to the console as well returning the result). The older API
-was removed in version 0.7.0.
-
 
 ## Usage
 
@@ -59,7 +50,7 @@ was removed in version 0.7.0.
 The main namespace for date-time operations in the `clj-time` library is `clj-time.core`.
 
 ``` clj
-=> (require '[clj-time.core :as t])
+(require '[clj-time.core :as t])
 ```
 
 Create a DateTime instance with date-time, specifying the year, month,
@@ -85,8 +76,8 @@ Once you have a date-time, use accessors like `hour` and `second` to
 access the corresponding fields:
 
 
-``` clj
-(t/hour (date-time 1986 10 14 22))
+```clojure
+(t/hour (t/date-time 1986 10 14 22))
 => 22
 ```
 
@@ -125,11 +116,15 @@ timezone-related shifting).
 => #<LocalDate 2013-03-20>
 ```
 
-The functions `after?` and `before?` determine the relative position of two
-DateTime instances:
+The functions `equal?`, `after?`, and `before?` determine the relative position
+of two DateTime instances:
 
-``` clj
+```clojure
+(t/equal? (t/date-time 1986 10) (t/date-time 1986 10))
+=> true
 (t/after? (t/date-time 1986 10) (t/date-time 1986 9))
+=> true
+(t/before? (t/date-time 1986 9) (t/date-time 1986 10))
 => true
 ```
 
@@ -147,7 +142,7 @@ An `Interval` is used to represent the span of time between two
 `DateTime` instances. Construct one using `interval`, then query them
 using `within?`, `overlaps?`, and `abuts?`
 
-``` clj
+```clojure
 (t/within? (t/interval (t/date-time 1986) (t/date-time 1990))
               (t/date-time 1987))
 => true
@@ -156,19 +151,32 @@ using `within?`, `overlaps?`, and `abuts?`
 The `in-seconds` and `in-minutes` functions can be used to describe
 intervals in the corresponding temporal units:
 
-``` clj
+```clojure
 (t/in-minutes (t/interval (t/date-time 1986 10 2) (t/date-time 1986 10 14)))
 => 17280
 ```
 
-`today-at` returns a moment in time at the given hour,
-minute and second on the current date:
+The `overlap` function can be used to get an `Interval` representing the
+overlap between two intervals:
 
-``` clojure
+``` clj
+(t/overlap (t/interval (t/date-time 1986) (t/date-time 1990))
+         (t/interval (t/date-time 1987) (t/date-time 1991)))
+=> #<Interval 1987-01-01T00:00:00.000Z/1990-01-01T00:00:00.000Z>
+```
+
+`today-at` returns a moment in time at the given hour,
+minute and second on the current date UTC; not the current system date:
+
+``` clj
 (t/today-at 12 00)
 => #<DateTime 2013-03-29T12:00:00.000Z>
 (t/today-at 12 00 05)
 => #<DateTime 2013-03-29T12:00:05.000Z>
+
+;; System clock says 11PM on 12/20/2016 UTC-5
+(t/today-at 7 00 00)
+=> #<DateTime 2016-12-21T7:00:00.000Z>
 ```
 
 ### clj-time.format
@@ -182,7 +190,7 @@ If you need to parse or print date-times, use `clj-time.format`:
 Parsing and printing are controlled by formatters. You can either use
 one of the built in ISO8601 formatters or define your own, e.g.:
 
-``` clj
+```clojure
 (def built-in-formatter (f/formatters :basic-date-time))
 (def custom-formatter (f/formatter "yyyyMMdd"))
 ```
@@ -196,14 +204,16 @@ date-time printed in their format:
 ```
 
 Remember that `mm` is minutes, `MM` is months, `ss` is seconds and
-`SS` is milliseconds.
+`SS` is milliseconds. You can find a [complete list of patterns](http://www.joda.org/joda-time/key_format.html)
+on the Joda Time website.
 
 Once you have a formatter, parsing and printing are straightforward:
 
 ``` clj
 (f/parse custom-formatter "20100311")
 => #<DateTime 2010-03-11T00:00:00.000Z>
-
+```
+```clojure
 (f/unparse custom-formatter (t/date-time 2010 10 3))
 => "20101003"
 ```
@@ -212,7 +222,7 @@ To parse dates in multiple formats and format dates in just one
 format, you can do this:
 
 
-``` clj
+```clojure
 (def multi-parser (f/formatter (t/default-time-zone) "YYYY-MM-dd" "YYYY/MM/dd"))
 
 (f/unparse multi-parser (f/parse multi-parser "2012-02-01"))
@@ -234,10 +244,11 @@ coercing Joda `DateTime` instances to and from various other types:
 
 For example, to convert a Joda `DateTime` to and from a Java `long`:
 
-``` clj
+```clojure
 (c/to-long (t/date-time 1998 4 25))
 => 893462400000
-
+```
+``` clj
 (c/from-long 893462400000)
 => #<DateTime 1998-04-25T00:00:00.000Z>
 ```
@@ -245,7 +256,7 @@ For example, to convert a Joda `DateTime` to and from a Java `long`:
 And by the magic of protocols you can pass in an isoformat string and
 get the unix epoch milliseconds:
 
-``` clj
+```clojure
 (c/to-long "2013-08-01")
 => 1375315200000
 ```
@@ -305,7 +316,7 @@ to the format-key passed in with
 `clj-time.periodic/periodic-seq` returns an infinite sequence of instants
 separated by a time period starting with the given point in time:
 
-``` clojure
+``` clj
 (require '[clj-time.periodic :as p])
 (require '[clj-time.core :as t])
 
@@ -314,16 +325,18 @@ separated by a time period starting with the given point in time:
 (take 10 (p/periodic-seq (t/now) (t/hours 12)))
 ```
 
+In particular, if you ask for a sequence of instants separated by a month, you will get dates where the month increases each time (rather than being, say, 30 days apart).
+
 ### clj-time.predicates
 
 `clj-time.predicates` comes with a set of handy predicates to
 check for common conditions. For instance:
 
-```clojure
-
+``` clj
 (require '[clj-time.core :as t])
 (require '[clj-time.predicates :as pr])
-
+```
+``` clojure
 (pr/monday? (t/date-time 1999 9 9))
 => false
 
@@ -343,6 +356,31 @@ check for common conditions. For instance:
 => false
 ```
 
+### clj-time.jdbc
+
+`clj-time.jdbc` registers protocol extensions so you don’t have to use
+`clj-time.coerce` yourself to coerce to and from SQL timestamps.
+
+From the REPL:
+
+``` clj
+(require 'clj-time.jdbc)
+```
+
+In your project:
+
+``` clj
+(ns my.neat.project
+  (:require [clj-time.jdbc]))
+
+; They're registered and ready to use.
+```
+
+Now you can use `org.joda.time.DateTime` objects when "writing" to the database
+in place of `java.sql.Timestamp` objects, and expect `org.joda.time.DateTime`
+objects when "reading" where you would have previously expected
+`java.sql.Timestamp` objects.
+
 ## Development
 
 Running the tests:
@@ -358,4 +396,3 @@ The complete [API documentation](http://clj-time.github.com/clj-time/doc/index.h
 ## License
 
 Released under the MIT License: <https://github.com/clj-time/clj-time/blob/master/MIT-LICENSE.txt>
-

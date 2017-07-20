@@ -1,7 +1,7 @@
 (ns clj-time.predicates-test
   (:refer-clojure :exclude [extend second])
-  (:use clojure.test)
-  (:use [clj-time core predicates]))
+  (:require [clojure.test :refer :all]
+            [clj-time [core :refer :all] [predicates :refer :all]]))
 
 (deftest test-days-of-the-week
   (is (= true (monday? (date-time 2012 9 10))))
@@ -29,13 +29,21 @@
   (is (= true (october? (date-time 2012 10 16))))
   (is (= true (november? (date-time 2012 11 16))))
   (is (= true (december? (date-time 2012 12 16))))
-  (is (= false (january? (date-time 2012 12 31))))
+  (is (= false (january? (date-time 2012 12 31)))))
+
+(deftest test-first-day-of-the-month?
   (is (= true (first-day-of-month? (date-time 2012 2 1))))
+  (is (= false (first-day-of-month? (date-time 2012 2 3)))))
+
+(deftest test-last-day-of-the-month?
   (is (= true (last-day-of-month? (date-time 2013 2 28))))
   (is (= false (last-day-of-month? (date-time 2012 2 28))))
   (is (= true (last-day-of-month? (date-time 2012 2 29))))
   (is (= true (last-day-of-month? (date-time 2013 10 31)))))
 
+(deftest test-nth-day-of-the-month?
+  (is (= true (nth-day-of-the-month? (date-time 2013 2 12) 12)))
+  (is (= false (nth-day-of-the-month? (date-time 2013 2 13) 12))))
 
 (deftest test-same-date
   (is (= true (same-date? (date-time 2013 10 8) (date-time 2013 10 8))))

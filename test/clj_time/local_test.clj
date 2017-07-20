@@ -1,8 +1,9 @@
 (ns clj-time.local-test
-  (:use clojure.test clj-time.local
-        [clj-time.core-test :only (when-available when-not-available)])
-  (:require (clj-time [core :as time] [format :as fmt]))
-  (:import (org.joda.time.format ISODateTimeFormat)
+  (:require [clojure.test :refer :all]
+            [clj-time [core :as time] [format :as fmt] [local :refer :all]]
+            [clj-time.core-test :refer [when-available when-not-available]])
+  (:import [org.joda.time DateTime]
+           [org.joda.time.format ISODateTimeFormat]
            java.util.Date java.sql.Timestamp))
 
 (deftest test-now
@@ -55,7 +56,7 @@
                 (is (= "04/25/1998 11:59:01" (format-local-time (time/date-time 1998 4 25 11 59 1) :mmddyyyy-hhmmss-slash)))
                 (is (= (time/from-time-zone (time/date-time 1998 4 25 11 59 1) (time/default-time-zone))
                        (to-local-date-time "04/25/1998 11:59:01")))
-                (is (= (time/default-time-zone) (.getZone (to-local-date-time "04/25/1998 11:59:01")))))))]
+                (is (= (time/default-time-zone) (.getZone ^DateTime (to-local-date-time "04/25/1998 11:59:01")))))))]
     (when-available
      with-redefs
      (with-redefs [time/default-time-zone time-zone-fn]

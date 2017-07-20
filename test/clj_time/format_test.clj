@@ -1,14 +1,25 @@
 (ns clj-time.format-test
   (:refer-clojure :exclude [extend second])
-  (:use clojure.test
-        (clj-time core format))
+  (:require [clojure.test :refer :all]
+            [clj-time [core :refer :all] [format :refer :all]])
   (:import [org.joda.time DateTimeZone]
            java.util.Locale))
 
 (deftest test-formatter
-  (let [fmt (formatter "yyyyMMdd")]
-    (is (= (date-time 2010 3 11)
-           (parse fmt "20100311")))))
+  (testing "with string pattern"
+    (let [fmt (formatter "yyyyMMdd")]
+      (is (= (date-time 2010 3 11)
+             (parse fmt "20100311")))))
+  (testing "with keyword"
+    (let [dtz (time-zone-for-id "America/Detroit")
+          fmt (formatter dtz :year-month-day :basic-date "YY/dd/MM")]
+      (is (= (from-time-zone (date-time 1997 06 17) dtz)
+             (parse fmt "97/17/06")))))
+  (testing "with formatter"
+    (let [dtz (time-zone-for-id "America/Detroit")
+          fmt (formatter dtz (formatters :year-month-day) (formatters :basic-date) "YY/dd/MM")]
+      (is (= (from-time-zone (date-time 1997 06 17) dtz)
+             (parse fmt "97/17/06"))))))
 
 (deftest test-formatter-local
   (let [fmt (formatter-local "yyyyMMdd")]
@@ -97,9 +108,19 @@
   (let [fmt (with-locale (formatters :rfc822) Locale/ITALY)]
     (is (= "gio, 11 mar 2010 17:49:20 +0000"
            (unparse fmt (date-time 2010 3 11 17 49 20 881)))))
+  (let [current-locale (java.util.Locale/getDefault)]
+    (java.util.Locale/setDefault java.util.Locale/ITALY)
+    (try
+      (is (= "Thu, 11 Mar 2010 17:49:20 +0000"
+             (unparse (formatters :rfc822) (date-time 2010 3 11 17 49 20 881))))
+      (finally
+        (java.util.Locale/setDefault current-locale))))
   (let [fmt (with-pivot-year (formatter "YY") 2050)]
     (is (= (date-time 2075 1 1)
-           (parse fmt "75")))))
+           (parse fmt "75"))))
+  (let [fmt (with-default-year (formatter "MM dd") 2010)]
+    (is (= (date-time 2010 3 11)
+           (parse fmt "03 11")))))
 
 (deftest test-multi-parser
   (let [fmt (formatter utc "YYYY-MM-dd HH:mm" "YYYY/MM/dd@HH:mm" "YYYYMMddHHmm")]

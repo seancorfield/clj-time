@@ -12,7 +12,7 @@
 
     (show-formatters)
 
-   Once you have a formatter, parsing and printing are strait-forward:
+   Once you have a formatter, parsing and printing are straightforward:
 
      => (parse custom-formatter \"20100311\")
      #<DateTime 2010-03-11T00:00:00.000Z>
@@ -23,27 +23,29 @@
    By default the parse function always returns a DateTime instance with a UTC
    time zone, and the unparse function always represents a given DateTime
    instance in UTC. A formatter can be modified to different timezones, locales,
-   etc with the functions with-zone, with-locale, with-chronology, and
-   with-pivot-year."
+   etc with the functions with-zone, with-locale, with-chronology,
+   with-default-year and with-pivot-year."
   (:refer-clojure :exclude [extend second])
-  (:use [clojure.set :only (difference)])
-  (:use clj-time.core)
-  (:import (java.util Locale)
-           (org.joda.time Chronology DateTime DateTimeZone Interval LocalDateTime
-                          Period PeriodType LocalDate LocalTime)
-           (org.joda.time.format DateTimeFormat DateTimeFormatter DateTimePrinter
-                                 DateTimeFormatterBuilder DateTimeParser
-                                 ISODateTimeFormat)))
+  (:require [clj-time.core :refer :all]
+            [clojure.set :refer [difference]])
+  (:import [java.util Locale]
+           [org.joda.time Chronology DateTime DateTimeZone Interval
+                          LocalDateTime Period PeriodType LocalDate LocalTime]
+           [org.joda.time.format DateTimeFormat DateTimeFormatter
+                                 DateTimePrinter DateTimeFormatterBuilder
+                                 DateTimeParser ISODateTimeFormat]))
 
-(declare formatter)
+(declare formatters)
 ;; The formatters map and show-formatters idea are strait from chrono.
 
 (defn formatter
-  "Returns a custom formatter for the given date-time pattern."
-  ([^String fmts]
+  "Returns a custom formatter for the given date-time pattern or keyword."
+  ([fmts]
      (formatter fmts utc))
-  ([^String fmts ^DateTimeZone dtz]
-     (.withZone (DateTimeFormat/forPattern fmts) dtz))
+  ([fmts ^DateTimeZone dtz]
+   (cond (keyword? fmts) (.withZone ^DateTimeFormatter (get formatters fmts) dtz)
+         (string?  fmts) (.withZone (DateTimeFormat/forPattern fmts) dtz)
+         :else           (.withZone ^DateTimeFormatter fmts dtz)))
   ([^DateTimeZone dtz fmts & more]
     (let [printer (.getPrinter ^DateTimeFormatter (formatter fmts dtz))
           parsers (map #(.getParser ^DateTimeFormatter (formatter % dtz)) (cons fmts more))]
@@ -78,6 +80,11 @@
   "Return a copy of a formatter that uses the given DateTimeZone."
   [^DateTimeFormatter f ^DateTimeZone dtz]
   (.withZone f dtz))
+
+(defn with-default-year
+  "Return a copy of a formatter that uses the given default year."
+  [^DateTimeFormatter f ^Integer default-year]
+  (.withDefaultYear f default-year))
 
 (def ^{:doc "Map of ISO 8601 and a single RFC 822 formatters that can be used for parsing and, in most
              cases, printing."}
@@ -135,7 +142,7 @@
      :year (ISODateTimeFormat/year)
      :year-month (ISODateTimeFormat/yearMonth)
      :year-month-day (ISODateTimeFormat/yearMonthDay)
-     :rfc822 (formatter "EEE, dd MMM yyyy HH:mm:ss Z")
+     :rfc822 (with-locale (formatter "EEE, dd MMM yyyy HH:mm:ss Z") java.util.Locale/US)
      :mysql (formatter "yyyy-MM-dd HH:mm:ss")})))
 
 (def ^{:private true} parsers

@@ -1,7 +1,7 @@
 (ns clj-time.core-test
   (:refer-clojure :exclude [extend second])
-  (:use clojure.test
-        clj-time.core)
+  (:require [clojure.test :refer :all]
+            [clj-time.core :refer :all])
   (:import java.util.Date
            org.joda.time.DateTime))
 
@@ -17,6 +17,21 @@
   (let [midnight (do-at (date-time 2010 1 15 2)
                         (today-at-midnight (time-zone-for-offset -3)))]
     (is (= 14 (day midnight)))))
+
+
+(deftest test-with-time-at-start-of-day
+  (let [d (date-time 2010 1 1)]
+    (is (= d (with-time-at-start-of-day d))))
+  (let [start-of-day (-> (date-time 2010 1 15 2)
+                         (to-time-zone (time-zone-for-offset -3))
+                         (with-time-at-start-of-day))]
+    (is (= 14 (day start-of-day))))
+  (let [d (-> (date-time 2015 3 27 23)
+              (from-time-zone (time-zone-for-id "Asia/Gaza")))
+        d-plus-1h (-> d
+                      (plus (hours 1)))]
+    (is (= (hour d-plus-1h) (hour (with-time-at-start-of-day d-plus-1h))))
+    (is (not (zero? (hour d-plus-1h))))))
 
 (deftest test-epoch
   (let [e (epoch)]
@@ -58,6 +73,23 @@
     (is (= 0    (minute d)))
     (is (= 0    (second d)))
     (is (= 0    (milli  d)))))
+
+(deftest test-min-and-max
+  (let [ds [(date-time 1986 10 14 4 3 2 1)
+            (date-time 1986 12 14 4 3 2 1)
+            (date-time 1987 10 14 11 3 2 5)
+            (date-time 2014 10 14 4 3 2 1)
+            (date-time 1986 10 14 4 3 2 2)
+            (date-time 1985 10 14 4 3 2 1)
+            (date-time 1985 10 14 4 3 2 2)]]
+    (is (= (date-time 1985 10 14 4 3 2 1)
+           (apply min-date ds)))
+    (is (= (date-time 2014 10 14 4 3 2 1)
+           (apply max-date ds))))
+  (is (= (date-time 1986 10 14 4 3 2 1)
+         (apply min-date [(date-time 1986 10 14 4 3 2 1)])))
+  (is (= (date-time 1986 10 14 4 3 2 1)
+         (apply max-date [(date-time 1986 10 14 4 3 2 1)]))))
 
 (deftest test-local-date-time-and-accessors
   (let [d (local-date-time 1986)]
@@ -123,6 +155,9 @@
 (deftest test-time-zone-for-id
   (is (= utc (time-zone-for-id "UTC"))))
 
+(deftest test-available-ids
+  (is (some #{"UTC"} (available-ids))))
+
 (deftest test-to-time-zone
   (let [tz  (time-zone-for-offset 2)
         dt1 (date-time 1986 10 14 6)
@@ -136,6 +171,14 @@
         dt2 (from-time-zone dt1 tz)]
     (is (= 6 (hour dt2)))
     (is (> (.getMillis dt1) (.getMillis dt2)))))
+
+(deftest test-equal?
+  (is (equal? (date-time 2013 01 01 00)
+              (from-time-zone (date-time 2013 01 01 01)
+                              (time-zone-for-offset 1))))
+  (is (equal? (date-time 1987) (date-time 1987)))
+  (is (not (equal? (date-time 1986) (date-time 1987))))
+  (is (not (equal? (date-time 1987) (date-time 1986)))))
 
 (deftest test-after?
   (is (after? (date-time 1987) (date-time 1986)))
@@ -264,8 +307,8 @@
       (is (= d1 (earliest [d4 d2 d3 d1])))
       (is (= d2 (earliest [d4 d3 d2])))
       (is (= d4 (earliest [d4])))
-      (is (= Exception) (earliest [d1 d2 nil]))
-      (is (= Exception) (earliest d2 nil))))
+      (is (nil? (earliest [d1 d2 nil])))
+      (is (nil? (earliest d2 nil)))))
 
 (deftest test-latest
     (let [d1 (date-time 1990 1 1 23 1 1)
@@ -279,8 +322,8 @@
       (is (= d4 (latest [d4 d2 d3 d1])))
       (is (= d3 (latest [d2 d3 d1])))
       (is (= d1 (latest [d1])))
-      (is (= Exception) (latest [d1 d2 nil]))
-      (is (= Exception) (latest d2 nil))))
+      (is (= d2 (latest [d1 d2 nil])))
+      (is (= d2 (latest d2 nil)))))
 
 (deftest test-start-end
   (let [s (date-time 1986 10 14 12 5 4)
@@ -312,17 +355,94 @@
     (is (= 385     (in-days p)))
     (is (= 9249    (in-hours p)))))
 
+(deftest test-period-in-millis
+  (is (= 30000      (-> 30 seconds in-millis)))
+  (is (= 240000     (-> 4 minutes in-millis)))
+  (is (= 43200000   (-> 12 hours in-millis)))
+  (is (= 777600000  (-> 9 days in-millis)))
+  (is (= 1814400000 (-> 3 weeks in-millis)))
+  (is (thrown? UnsupportedOperationException (-> 2 months in-millis)))
+  (is (thrown? UnsupportedOperationException (-> 2 years in-millis))))
+
+(deftest test-period-in-seconds
+  (is (= 30      (-> 30 seconds in-seconds)))
+  (is (= 240     (-> 4 minutes in-seconds)))
+  (is (= 43200   (-> 12 hours in-seconds)))
+  (is (= 777600  (-> 9 days in-seconds)))
+  (is (= 1814400 (-> 3 weeks in-seconds)))
+  (is (thrown? UnsupportedOperationException (-> 2 months in-seconds)))
+  (is (thrown? UnsupportedOperationException (-> 2 years in-seconds))))
+
+(deftest test-period-in-minutes
+  (is (= 0     (-> 30 seconds in-minutes)))
+  (is (= 4     (-> 4 minutes in-minutes)))
+  (is (= 720   (-> 12 hours in-minutes)))
+  (is (= 12960 (-> 9 days in-minutes)))
+  (is (= 30240 (-> 3 weeks in-minutes)))
+  (is (thrown? UnsupportedOperationException (-> 2 months in-minutes)))
+  (is (thrown? UnsupportedOperationException (-> 2 years in-minutes))))
+ 
+(deftest test-period-in-hours
+  (is (= 0   (-> 30 seconds in-hours)))
+  (is (= 0   (-> 4 minutes in-hours)))
+  (is (= 12  (-> 12 hours in-hours)))
+  (is (= 216 (-> 9 days in-hours)))
+  (is (= 504 (-> 3 weeks in-hours)))
+  (is (thrown? UnsupportedOperationException (-> 2 months in-hours)))
+  (is (thrown? UnsupportedOperationException (-> 2 years in-hours))))
+
+(deftest test-period-in-days
+  (is (= 0  (-> 30 seconds in-days)))
+  (is (= 0  (-> 4 minutes in-days)))
+  (is (= 0  (-> 12 hours in-days)))
+  (is (= 9  (-> 9 days in-days)))
+  (is (= 21 (-> 3 weeks in-days)))
+  (is (thrown? UnsupportedOperationException (-> 2 months in-days)))
+  (is (thrown? UnsupportedOperationException (-> 2 years in-days))))
+
+(deftest test-period-in-weeks
+  (is (= 0  (-> 30 seconds in-weeks)))
+  (is (= 0  (-> 4 minutes in-weeks)))
+  (is (= 0  (-> 12 hours in-weeks)))
+  (is (= 1  (-> 9 days in-weeks)))
+  (is (= 3  (-> 3 weeks in-weeks)))
+  (is (thrown? UnsupportedOperationException (-> 2 months in-weeks)))
+  (is (thrown? UnsupportedOperationException (-> 2 years in-weeks))))
+
+(deftest test-period-in-months
+  (is (thrown? UnsupportedOperationException (-> 2 seconds in-months)))
+  (is (thrown? UnsupportedOperationException (-> 2 minutes in-months)))
+  (is (thrown? UnsupportedOperationException (-> 2 hours in-months)))
+  (is (thrown? UnsupportedOperationException (-> 2 days in-months)))
+  (is (thrown? UnsupportedOperationException (-> 2 weeks in-months)))
+  (is (= 7  (-> 7 months in-months)))
+  (is (= 36 (-> 3 years in-months))))
+
+(deftest test-period-in-years
+  (is (thrown? UnsupportedOperationException (-> 2 seconds in-years)))
+  (is (thrown? UnsupportedOperationException (-> 2 minutes in-years)))
+  (is (thrown? UnsupportedOperationException (-> 2 hours in-years)))
+  (is (thrown? UnsupportedOperationException (-> 2 days in-years)))
+  (is (thrown? UnsupportedOperationException (-> 2 weeks in-years)))
+  (is (= 1 (-> 14 months in-years)))
+  (is (= 3 (-> 3 years in-years))))
+
 (deftest test-within?
   (let [d1 (date-time 1985)
         d2 (date-time 1986)
         d3 (date-time 1987)
+        d4 (date-time 2013 01 01 00)
+        d5 (date-time 2013 01 01 01)
         ld1 (local-date 2013 1 1)
         ld2 (local-date 2013 2 28)
-        ld3 (local-date 2013 10 5)]
+        ld3 (local-date 2013 10 5)
+        dtz1 (from-time-zone (date-time 2013 01 01 02)
+                             (time-zone-for-offset 1))]
     (is (within? (interval d1 d3) d2))
     (is (not (within? (interval d1 d2) d3)))
     (is (not (within? (interval d1 d2) d2)))
     (is (not (within? (interval d2 d3) d1)))
+    (is (within? d4 d5 dtz1))
     (is (within? ld1 ld3 ld2))
     (is (not (within? ld1 ld2 ld3)))
     (is (not (within? ld3 ld2 ld1)))
@@ -375,6 +495,28 @@
     (is (overlaps? ld2 ld3 ld1 ld2))
     (is (not (overlaps? ld1 ld2 ld3 ld4)))
     (is (not (overlaps? ld1 ld3 ld4 ld5)))))
+
+(deftest test-overlap
+  (let [d1 (date-time 1985)
+        d2 (date-time 1986)
+        d3 (date-time 1987)
+        d4 (date-time 1988)
+        n (now)
+        n1 (minus n (minutes 5))
+        n2 (plus n (minutes 5))]
+    (is (nil? (overlap (interval d1 d2) nil)))
+    (is (let [t (overlap (interval n1 n2) nil)]
+          ;; nil is a zero length duration at 'now'
+          (and
+            (< (in-millis (interval n (start t))) 1000)
+            (= 0 (in-millis t)))))
+    (is (= (interval d2 d2) (overlap (interval d1 d3) (interval d2 d2))))
+    (is (nil? (overlap (interval d1 d1) (interval d1 d1)))) ;; The intervals abut
+    (is (nil? (overlap (interval d1 d2) (interval d2 d3)))) ;; The intervals abut
+    (is (= (interval d2 d3) (overlap (interval d1 d3) (interval d2 d4))))
+    (is (= (interval d2 d3) (overlap (interval d1 d3) (interval d2 d3))))
+    (is (nil? (overlap (interval d1 d2) (interval d2 d3))))
+    (is (nil? (overlap (interval d1 d2) (interval d3 d4))))))
 
 (deftest test-abuts?
   (let [d1 (date-time 1985)
@@ -440,6 +582,16 @@
     (is (= d9 (last-day-of-the-month d10)))
     (is (= d9 (last-day-of-the-month d11)))))
 
+(deftest test-week-number-of-year
+  (is (= 52 (week-number-of-year (date-time 2012 1 1))))
+  (is (= 1 (week-number-of-year (date-time 2012 1 2))))
+  (is (= 1 (week-number-of-year (date-time 2012 1 8))))
+  (is (= 2 (week-number-of-year (date-time 2012 1 9))))
+  (is (= 34 (week-number-of-year (date-time 2012 8 20))))
+  (is (= 52 (week-number-of-year (date-time 2012 12 30))))
+  (is (= 1 (week-number-of-year (date-time 2012 12 31))))
+  (is (= 1 (week-number-of-year (date-time 2013 1 1)))))
+
 (deftest test-number-of-days-in-the-month
   (is (= 31 (number-of-days-in-the-month 2012 1)))
   (is (= 31 (number-of-days-in-the-month (date-time 2012 1 3))))
@@ -479,6 +631,26 @@
     (is (= d9 (first-day-of-the-month d10)))
     (is (= d9 (first-day-of-the-month d11)))))
 
+(deftest test-nth-day-of-the-month
+  (let [july-1  (date-time 2012 7 1)
+        july-10 (date-time 2012 7 10)
+        july-15 (date-time 2012 7 15)
+        july-31 (date-time 2012 7 31)]
+
+    (is (= july-10 (nth-day-of-the-month july-1  10)))
+    (is (= july-10 (nth-day-of-the-month july-10 10)))
+    (is (= july-10 (nth-day-of-the-month july-15 10)))
+    (is (= july-10 (nth-day-of-the-month july-31 10)))
+
+    (is (= july-1 (nth-day-of-the-month july-1  1)))
+    (is (= july-1 (nth-day-of-the-month july-10 1)))
+    (is (= july-1 (nth-day-of-the-month july-15 1)))
+    (is (= july-1 (nth-day-of-the-month july-31 1)))
+
+    (is (= july-31 (nth-day-of-the-month july-1  31)))
+    (is (= july-31 (nth-day-of-the-month july-10 31)))
+    (is (= july-31 (nth-day-of-the-month july-15 31)))
+    (is (= july-31 (nth-day-of-the-month july-31 31)))))
 
 (deftest test-today-at
   (let [^DateTime n  (now)
@@ -488,3 +660,27 @@
         d1 (date-time y m d 13 0)]
     (is (= d1 (today-at 13 0)))
     (is (= d1 (today-at 13 0 0)))))
+
+(deftest test-floor
+	(let [^DateTime t (date-time 0 1 2 3 4 5 6)]
+		(is (= (floor t year)   (date-time 0)))
+		(is (= (floor t month)  (date-time 0 1)))
+		(is (= (floor t day)    (date-time 0 1 2)))
+		(is (= (floor t hour)   (date-time 0 1 2 3)))
+		(is (= (floor t minute) (date-time 0 1 2 3 4)))
+		(is (= (floor t second) (date-time 0 1 2 3 4 5)))
+		(is (= (floor t milli)  (date-time 0 1 2 3 4 5 6)))))
+
+(deftest test-floor-with-timezones
+  (are [tz-id floor-fn dt1-args dt2-args]
+      (let [timezone (time-zone-for-id tz-id)
+            [dt1 dt2] (map #(from-time-zone (apply date-time %)
+                                            timezone)
+                           [dt1-args dt2-args])
+            ^DateTime floored-dt1 (floor dt1 floor-fn)]
+        (and (= floored-dt1 dt2)
+             (= (.getZone floored-dt1) timezone)))
+    "Africa/Johannesburg" day [1 1 2 1]  [1 1 2]
+    "Africa/Johannesburg" day [1 1 1 23] [1 1 1]
+    "America/Los_Angeles" day [1 1 2 3]  [1 1 2]
+    "America/Los_Angeles" day [1 1 1 20] [1 1 1]))

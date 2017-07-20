@@ -1,7 +1,7 @@
 (ns clj-time.coerce-test
   (:refer-clojure :exclude [extend second])
-  (:use clojure.test)
-  (:use (clj-time core coerce))
+  (:require [clojure.test :refer :all]
+            [clj-time [core :refer :all] [coerce :refer :all]])
   (:import java.util.Date java.sql.Timestamp
            [org.joda.time LocalDate LocalDateTime]))
 
@@ -28,6 +28,10 @@
 
 (deftest test-from-long
   (is (= (date-time 1998 4 25) (from-long 893462400000))))
+
+(deftest test-from-epoch
+  (is (= (date-time 1998 4 25)
+         (from-epoch 893462400))))
 
 (deftest test-from-string
   (is (= (from-string "1998-04-25T00:00:00.000Z")
@@ -124,7 +128,8 @@
   (is (= (long 0) (to-epoch 0)))
   (is (= 893462400 (to-epoch 893462400000)))
   (is (= 893462400 (to-epoch (Timestamp. 893462400000))))
-  (is (= 893462400 (to-epoch "1998-04-25T00:00:00.000Z"))))
+  (is (= 893462400 (to-epoch "1998-04-25T00:00:00.000Z")))
+  (is (= 893462400 (to-epoch "1998-04-25T00:00:00.500Z"))))
 
 (deftest test-to-string
   (is (nil? (to-string nil)))
@@ -174,3 +179,26 @@
   (is (= (LocalDateTime. 1970 1 1 0 0) (to-local-date-time 0)))
   (is (= (LocalDateTime. 1998 4 25 0 0 55 0) (to-local-date-time 893462455000)))
   (is (= (LocalDateTime. 1998 4 25 10 20 30 400) (to-local-date-time "1998-04-25T10:20:30.400Z"))))
+
+(deftest test-in-time-zone
+  (testing "negative time zone offsets close to date boundary return previous day"
+    (is (= (in-time-zone (date-time 2015 5 5 0 0)
+                         (time-zone-for-offset 0 0))
+           (local-date 2015 5 5)))
+
+    (is (= (in-time-zone (date-time 2015 5 5 0 0)
+                         (time-zone-for-offset -1 0))
+           (local-date 2015 5 4)))
+
+    (is (= (in-time-zone (date-time 2015 5 5 0 0)
+                         (time-zone-for-offset 1 0))
+           (local-date 2015 5 5))))
+
+  (testing "positive time zone offsets close to date boundary return next day"
+    (is (= (in-time-zone (date-time 2015 5 5 20 0)
+                         (time-zone-for-offset 5 0))
+           (local-date 2015 5 6)))
+
+    (is (= (in-time-zone (date-time 2015 5 5 20 0)
+                         (time-zone-for-offset 3 0))
+           (local-date 2015 5 5)))))

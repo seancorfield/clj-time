@@ -8,11 +8,12 @@
      => (from-long 893462400000)
      #<DateTime 1998-04-25T00:00:00.000Z>"
   (:refer-clojure :exclude [extend second])
-  (:use clj-time.core)
-  (:require [clj-time.format :as time-fmt])
-  (:import (org.joda.time DateTime DateTimeZone DateMidnight YearMonth
-                          LocalDate LocalDateTime))
-  (:import java.util.Date java.sql.Timestamp))
+  (:require [clj-time.core :refer :all]
+            [clj-time.format :as time-fmt])
+  (:import [java.sql Timestamp]
+           [java.util Date]
+           [org.joda.time DateTime DateTimeZone DateMidnight YearMonth
+                          LocalDate LocalDateTime]))
 
 (defprotocol ICoerce
   (^org.joda.time.DateTime
@@ -23,6 +24,14 @@
    number of milliseconds after the Unix epoch."
   [^Long millis]
   (DateTime. millis ^DateTimeZone utc))
+
+
+(defn from-epoch
+  "Returns a DateTime instance in the UTC time zone
+   from given Unix epoch."
+  [^Long epoch]
+  (from-long (* epoch 1000)))
+
 
 (defn from-string
   "return DateTime instance from string using
@@ -62,7 +71,7 @@
   "Convert `obj` to Unix epoch."
   [obj]
   (let [millis (to-long obj)]
-    (and millis (/ millis 1000))))
+    (and millis (quot millis 1000))))
 
 (defn to-date
   "Convert `obj` to a Java Date instance."
@@ -106,6 +115,14 @@
   [obj]
   (if-let [dt (to-date-time obj)]
     (LocalDateTime. (.getMillis (from-time-zone dt (default-time-zone))))))
+
+(defn in-time-zone
+  "Convert `obj` into `tz`, return org.joda.time.LocalDate instance."
+  [obj tz]
+  (if-let [dt (to-date-time obj)]
+    (-> dt
+        (to-time-zone tz)
+        .toLocalDate)))
 
 (extend-protocol ICoerce
   nil

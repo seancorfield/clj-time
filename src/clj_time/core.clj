@@ -43,7 +43,7 @@
      #<DateTime 1986-10-21T22:00:00.000-02:00>
 
    In addition to time-zone-for-offset, you can use the time-zone-for-id and
-   default-time-zone functions and the utc Var to constgruct or get DateTimeZone
+   default-time-zone functions and the utc Var to construct or get DateTimeZone
    instances.
 
    The functions after? and before? determine the relative position of two
@@ -72,21 +72,29 @@
                  (date-time 1987))
      true
 
-   To find the amount of time encompased by an interval, use in-seconds and
+   To find the amount of time encompassed by an interval, use in-seconds and
    in-minutes:
 
      => (in-minutes (interval (date-time 1986 10 2) (date-time 1986 10 14)))
      17280
 
+   The overlap function can be used to get an Interval representing the
+   overlap between two intervals:
+
+     => (overlap (t/interval (t/date-time 1986) (t/date-time 1990))
+                             (t/interval (t/date-time 1987) (t/date-time 1991)))
+     #<Interval 1987-01-01T00:00:00.000Z/1990-01-01T00:00:00.000Z>
+
    Note that all functions in this namespace work with Joda objects or ints. If
    you need to print or parse date-times, see clj-time.format. If you need to
-   ceorce date-times to or from other types, see clj-time.coerce."
+   coerce date-times to or from other types, see clj-time.coerce."
   (:refer-clojure :exclude [extend second])
-  (:import (org.joda.time ReadablePartial ReadableDateTime ReadableInstant ReadablePeriod DateTime
-                          DateMidnight YearMonth LocalDate LocalTime DateTimeZone Period PeriodType Interval
-                          Years Months Weeks Days Hours Minutes Seconds LocalDateTime MutableDateTime
-                          DateTimeUtils)
-           (org.joda.time.base BaseDateTime)))
+  (:import [org.joda.time ReadablePartial ReadableDateTime ReadableInstant
+                          ReadablePeriod DateTime DateMidnight YearMonth
+                          LocalDate LocalTime DateTimeZone Period PeriodType
+                          Interval Years Months Weeks Days Hours Minutes Seconds
+                          LocalDateTime MutableDateTime DateTimeUtils]
+           [org.joda.time.base BaseDateTime]))
 
 (defn deprecated [message]
   (println "DEPRECATION WARNING: " message))
@@ -102,6 +110,7 @@
   (sec [this]   "Return the second of minute component of the given date/time.")
   (second [this]   "Return the second of minute component of the given date/time.")
   (milli [this]   "Return the millisecond of second component of the given date/time.")
+  (equal? [this that] "Returns true if ReadableDateTime 'this' is strictly equal to date/time 'that'.")
   (after? [this that] "Returns true if ReadableDateTime 'this' is strictly after date/time 'that'.")
   (before? [this that] "Returns true if ReadableDateTime 'this' is strictly before date/time 'that'.")
   (plus- [this ^ReadablePeriod period]
@@ -109,7 +118,19 @@
   (minus- [this ^ReadablePeriod period]
     "Returns a new date/time corresponding to the given date/time moved backwards by the given Period(s).")
   (first-day-of-the-month- [this] "Returns the first day of the month")
-  (last-day-of-the-month- [this] "Returns the last day of the month"))
+  (last-day-of-the-month- [this] "Returns the last day of the month")
+  (week-number-of-year [this] "Returs the number of weeks in the year"))
+
+(defprotocol InTimeUnitProtocol
+  "Interface for in-<time unit> functions"
+  (in-millis [this] "Return the time in milliseconds.")
+  (in-seconds [this] "Return the time in seconds.")
+  (in-minutes [this] "Return the time in minutes.")
+  (in-hours [this] "Return the time in hours.")
+  (in-days [this] "Return the time in days.")
+  (in-weeks [this] "Return the time in weeks")
+  (in-months [this] "Return the time in months")
+  (in-years [this] "Return the time in years"))
 
 (extend-protocol DateTimeProtocol
   org.joda.time.DateTime
@@ -125,6 +146,7 @@
     (.getSecondOfMinute this))
   (second [this] (.getSecondOfMinute this))
   (milli [this] (.getMillisOfSecond this))
+  (equal? [this ^ReadableInstant that] (.isEqual this that))
   (after? [this ^ReadableInstant that] (.isAfter this that))
   (before? [this ^ReadableInstant that] (.isBefore this that))
   (plus- [this ^ReadablePeriod period] (.plus this period))
@@ -133,6 +155,8 @@
     (.. ^DateTime this dayOfMonth withMinimumValue))
   (last-day-of-the-month- [this]
      (.. ^DateTime this dayOfMonth withMaximumValue))
+  (week-number-of-year [this]
+    (.getWeekOfWeekyear this))
 
   org.joda.time.DateMidnight
   (year [this] (.getYear this))
@@ -147,6 +171,7 @@
     (.getSecondOfMinute this))
   (second [this] (.getSecondOfMinute this))
   (milli [this] (.getMillisOfSecond this))
+  (equal? [this ^ReadableInstant that] (.isEqual this that))
   (after? [this ^ReadableInstant that] (.isAfter this that))
   (before? [this ^ReadableInstant that] (.isBefore this that))
   (plus- [this ^ReadablePeriod period] (.plus this period))
@@ -155,6 +180,8 @@
     (.. ^DateMidnight this dayOfMonth withMinimumValue))
   (last-day-of-the-month- [this]
      (.. ^DateMidnight this dayOfMonth withMaximumValue))
+  (week-number-of-year [this]
+    (.getWeekOfWeekyear this))
 
   org.joda.time.LocalDateTime
   (year [this] (.getYear this))
@@ -169,6 +196,7 @@
     (.getSecondOfMinute this))
   (second [this] (.getSecondOfMinute this))
   (milli [this] (.getMillisOfSecond this))
+  (equal? [this ^ReadablePartial that] (.isEqual this that))
   (after? [this ^ReadablePartial that] (.isAfter this that))
   (before? [this ^ReadablePartial that] (.isBefore this that))
   (plus- [this ^ReadablePeriod period] (.plus this period))
@@ -177,10 +205,13 @@
     (.. ^LocalDateTime this dayOfMonth withMinimumValue))
   (last-day-of-the-month- [this]
      (.. ^LocalDateTime this dayOfMonth withMaximumValue))
+  (week-number-of-year [this]
+    (.getWeekOfWeekyear this))
 
   org.joda.time.YearMonth
   (year [this] (.getYear this))
   (month [this] (.getMonthOfYear this))
+  (equal? [this ^ReadablePartial that] (.isEqual this that))
   (after? [this ^ReadablePartial that] (.isAfter this that))
   (before? [this ^ReadablePartial that] (.isBefore this that))
   (plus- [this ^ReadablePeriod period] (.plus this period))
@@ -191,6 +222,7 @@
   (month [this] (.getMonthOfYear this))
   (day [this] (.getDayOfMonth this))
   (day-of-week [this] (.getDayOfWeek this))
+  (equal? [this ^ReadablePartial that] (.isEqual this that))
   (after? [this ^ReadablePartial that] (.isAfter this that))
   (before? [this ^ReadablePartial that] (.isBefore this that))
   (plus- [this ^ReadablePeriod period] (.plus this period))
@@ -199,12 +231,15 @@
     (.. ^LocalDate this dayOfMonth withMinimumValue))
   (last-day-of-the-month- [this]
      (.. ^LocalDate this dayOfMonth withMaximumValue))
+  (week-number-of-year [this]
+    (.getWeekOfWeekyear this))
 
   org.joda.time.LocalTime
   (hour [this] (.getHourOfDay this))
   (minute [this] (.getMinuteOfHour this))
   (second [this] (.getSecondOfMinute this))
   (milli [this] (.getMillisOfSecond this))
+  (equal? [this ^ReadablePartial that] (.isEqual this that))
   (after? [this ^ReadablePartial that] (.isAfter this that))
   (before? [this ^ReadablePartial that] (.isBefore this that))
   (plus- [this ^ReadablePeriod period] (.plus this period))
@@ -226,15 +261,22 @@
   []
   (LocalTime. ))
 
-(defn today-at-midnight
-  "Returns a DateMidnight for today at midnight in the UTC time zone."
+(defn ^{:deprecated "0.12.0"} today-at-midnight
+  "DEPRECATED: Please use with-time-at-start-of-day instead. See http://goo.gl/nQCmKd
+  Returns a DateMidnight for today at midnight in the UTC time zone."
   ([]
    (DateMidnight. ^DateTimeZone utc))
   ([^DateTimeZone tz]
    (DateMidnight. tz)))
 
+(defn ^DateTime with-time-at-start-of-day
+  "Returns a DateTime representing the start of the day. Normally midnight,
+  but not always true, as in some time zones with daylight savings."
+  [^DateTime dt]
+  (.withTimeAtStartOfDay dt))
+
 (defn epoch
-  "Returns a DateTime for the begining of the Unix epoch in the UTC time zone."
+  "Returns a DateTime for the beginning of the Unix epoch in the UTC time zone."
   []
   (DateTime. (long 0) ^DateTimeZone utc))
 
@@ -249,6 +291,16 @@
     (date-midnight year month 1))
   ([^Long year ^Long month ^Long day]
     (DateMidnight. year month day ^DateTimeZone utc)))
+
+(defn min-date
+  "Minimum of the provided DateTimes."
+  [dt & dts]
+  (reduce #(if (before? %1 %2) %1 %2) dt dts))
+
+(defn max-date
+  "Maximum of the provided DateTimes."
+  [dt & dts]
+  (reduce #(if (after? %1 %2) %1 %2) dt dts))
 
 (defn ^DateTime date-time
   "Constructs and returns a new DateTime in UTC.
@@ -346,6 +398,11 @@
   [^String id]
   (DateTimeZone/forID id))
 
+(defn available-ids
+  "Returns a set of available IDs for use with time-zone-for-id."
+  []
+  (DateTimeZone/getAvailableIDs))
+
 (defn default-time-zone
   "Returns the default DateTimeZone for the current environment."
   []
@@ -422,6 +479,52 @@
      (PeriodType/seconds))
   ([^Integer n]
      (Seconds/seconds n)))
+
+(extend-protocol InTimeUnitProtocol
+  org.joda.time.Interval
+  (in-millis [this] (.toDurationMillis this))
+  (in-seconds [this] (.getSeconds (.toPeriod this (seconds))))
+  (in-minutes [this] (.getMinutes (.toPeriod this (minutes))))
+  (in-hours [this] (.getHours (.toPeriod this (hours))))
+  (in-days [this] (.getDays (.toPeriod this (days))))
+  (in-weeks [this] (.getWeeks (.toPeriod this (weeks))))
+  (in-months [this] (.getMonths (.toPeriod this (months))))
+  (in-years [this] (.getYears (.toPeriod this (years))))
+  org.joda.time.ReadablePeriod
+  (in-millis [this] (-> this .toPeriod .toStandardDuration .getMillis))
+  (in-seconds [this] (-> this .toPeriod .toStandardSeconds .getSeconds))
+  (in-minutes [this] (-> this .toPeriod .toStandardMinutes .getMinutes))
+  (in-hours [this] (-> this .toPeriod .toStandardHours .getHours))
+  (in-days [this] (-> this .toPeriod .toStandardDays .getDays))
+  (in-weeks [this] (-> this .toPeriod .toStandardWeeks .getWeeks))
+  (in-months [this]
+    (condp instance? this
+      org.joda.time.Months (.getMonths ^org.joda.time.Months this)
+      org.joda.time.Years (* 12 (.getYears ^org.joda.time.Years this))
+      (throw
+        (UnsupportedOperationException.
+          "Cannot convert to Months because months vary in length."))))
+  (in-years [this]
+    (condp instance? this
+      org.joda.time.Months (int (/ (.getMonths ^org.joda.time.Months this) 12))
+      org.joda.time.Years (.getYears ^org.joda.time.Years this)
+      (throw
+        (UnsupportedOperationException.
+          "Cannot convert to Years because years vary in length.")))))
+
+(defn in-msecs
+  "DEPRECATED: Returns the number of milliseconds in the given Interval."
+  {:deprecated "0.6.0"}
+  [^Interval in]
+  (deprecated "in-msecs has been deprecated in favor of in-millis")
+  (in-millis in))
+
+(defn in-secs
+  "DEPRECATED: Returns the number of standard seconds in the given Interval."
+  {:deprecated "0.6.0"}
+  [^Interval in]
+  (deprecated "in-secs has been deprecated in favor of in-seconds")
+  (in-seconds in))
 
 (defn secs
   "DEPRECATED"
@@ -512,59 +615,6 @@
   [^Interval in & by]
   (.withEnd in (apply plus (end in) by)))
 
-(defn in-millis
-  "Returns the number of milliseconds in the given Interval."
-  [^Interval in]
-  (.toDurationMillis in))
-
-(defn in-msecs
-  "DEPRECATED: Returns the number of milliseconds in the given Interval."
-  {:deprecated "0.6.0"}
-  [^Interval in]
-  (deprecated "in-msecs has been deprecated in favor of in-millis")
-  (in-millis in))
-
-(defn in-seconds
-  "Returns the number of standard seconds in the given Interval."
-  [^Interval in]
-  (.getSeconds (.toPeriod in (seconds))))
-
-(defn in-secs
-  "DEPRECATED: Returns the number of standard seconds in the given Interval."
-  {:deprecated "0.6.0"}
-  [^Interval in]
-  (deprecated "in-secs has been deprecated in favor of in-seconds")
-  (in-seconds in))
-
-(defn in-minutes
-  "Returns the number of standard minutes in the given Interval."
-  [^Interval in]
-  (.getMinutes (.toPeriod in (minutes))))
-
-(defn in-hours
-  "Returns the number of standard hours in the given Interval."
-  [^Interval in]
-  (.getHours (.toPeriod in (hours))))
-
-(defn in-days
-  "Returns the number of standard days in the given Interval."
-  [^Interval in]
-  (.getDays (.toPeriod in (days))))
-
-(defn in-weeks
-  "Returns the number of standard weeks in the given Interval."
-  [^Interval in]
-  (.getWeeks (.toPeriod in (weeks))))
-
-(defn in-months
-  "Returns the number of standard months in the given Interval."
-  [^Interval in]
-  (.getMonths (.toPeriod in (months))))
-
-(defn in-years
-  "Returns the number of standard years in the given Interval."
-  [^Interval in]
-  (.getYears (.toPeriod in (years))))
 
 (defn within?
   "With 2 arguments: Returns true if the given Interval contains the given
@@ -576,8 +626,8 @@
   ([^Interval i ^ReadableDateTime dt]
      (.contains i dt))
   ([^ReadablePartial start ^ReadablePartial end ^ReadablePartial test]
-     (or (= start test)
-         (= end test)
+     (or (equal? start test)
+         (equal? end test)
          (and (before? start test) (after? end test)))))
 
 (defn overlaps?
@@ -591,7 +641,22 @@
     ^ReadablePartial start-b ^ReadablePartial end-b]
      (or (and (before? start-b end-a) (after? end-b start-a))
          (and (after? end-b start-a) (before? start-b end-a))
-         (or (= start-a end-b) (= start-b end-a)))))
+         (or (equal? start-a end-b) (equal? start-b end-a)))))
+
+(defn overlap
+  "Returns an Interval representing the overlap of the specified Intervals.
+   Returns nil if the Intervals do not overlap.
+   The first argument must not be nil.
+   If the second argument is nil then the overlap of the first argument
+   and a zero duration interval with both start and end times equal to the
+   current time is returned."
+  [^Interval i-a ^Interval i-b]
+     ;; joda-time AbstractInterval.overlaps:
+     ;;    null argument means a zero length interval 'now'.
+     (cond (nil? i-b) (let [n (now)] (overlap i-a (interval n n)))
+           (.overlaps i-a i-b) (interval (latest (start i-a) (start i-b))
+                                         (earliest (end i-a) (end i-b)))
+           :else nil))
 
 (defn abuts?
   "Returns true if Interval i-a abuts i-b, i.e. then end of i-a is exactly the
@@ -663,6 +728,14 @@
   (^long [^long year ^long month]
          (day (last-day-of-the-month- (date-time year month)))))
 
+(defn nth-day-of-the-month
+  "Returns the nth day of the month."
+  ([^long year ^long month ^long n]
+   (nth-day-of-the-month (date-time year month) n))
+  ([^DateTime dt ^long n]
+   (plus (first-day-of-the-month dt)
+         (days (- n 1)))))
+
 (defn ^DateTime today-at
   ([^long hours ^long minutes ^long seconds ^long millis]
      (let [^MutableDateTime mdt (.toMutableDateTime ^DateTime (now))]
@@ -690,13 +763,16 @@
     (fn [] ~@body)))
 
 (defn ^DateTime floor
-  "Floors the given date-time to the given time unit,
-  e.g. (floor (now) hour) returns (now) for all units up to and including the hour"
-  ([^DateTime dt dt-fn] (floor dt dt-fn [year month day hour minute second millis]))
-  ([^DateTime dt dt-fn dt-fns]
-    (apply date-time
-      (map apply
-        (concat (take-while (complement (partial = dt-fn)) dt-fns) [dt-fn])
-        (repeat [dt])))
-  )
-)
+  "Floors the given date-time dt to the given time unit dt-fn,
+  e.g. (floor (now) hour) returns (now) for all units
+  up to and including the hour"
+  ([^DateTime dt dt-fn]
+   (let [dt-fns [year month day hour minute second milli]
+         tz (.getZone dt)]
+    (.withZoneRetainFields
+                ^DateTime
+  	 	(apply date-time
+  	 		(map apply
+  				(concat (take-while (partial not= dt-fn) dt-fns) [dt-fn])
+  				(repeat [dt])))
+      tz))))
