@@ -86,7 +86,7 @@ access the corresponding fields:
 
 
 ``` clj
-(t/hour (date-time 1986 10 14 22))
+(t/hour (t/date-time 1986 10 14 22))
 => 22
 ```
 
